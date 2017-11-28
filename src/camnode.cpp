@@ -515,18 +515,39 @@ static void NewBuffer_callback (ArvStream *pStream, ApplicationData *pApplicatio
     pBuffer = arv_stream_try_pop_buffer (pStream);
     if (pBuffer != NULL) 
     {
-        if (pBuffer->status == ARV_BUFFER_STATUS_SUCCESS) 
+        // wbd
+        //if (pBuffer->status == ARV_BUFFER_STATUS_SUCCESS) 
+        if (arv_buffer_get_status(pBuffer) == ARV_BUFFER_STATUS_SUCCESS) 
         {
 			sensor_msgs::Image msg;
+
+            // wbd
+            /////////////////////////////////////////////////////////////////////
+            size_t buffer_size  = 0;
+            const void *buffer_data = arv_buffer_get_data(pBuffer, &buffer_size);
+            /////////////////////////////////////////////////////////////////////
 			
         	pApplicationdata->nBuffers++;
-			std::vector<uint8_t> this_data(pBuffer->size);
-			memcpy(&this_data[0], pBuffer->data, pBuffer->size);
+
+            // wbd
+            ////////////////////////////////////////////////////////////////////
+			//std::vector<uint8_t> this_data(pBuffer->size);
+			//memcpy(&this_data[0], pBuffer->data, pBuffer->size);
+            std::vector<uint8_t> this_data(buffer_size);
+            memcpy(&this_data[0], buffer_data, buffer_size);
+            /////////////////////////////////////////////////////////////////////
+
 
 
 			// Camera/ROS Timestamp coordination.
-			cn				= (uint64_t)pBuffer->timestamp_ns;				// Camera now
+
+            // wbd
+            //////////////////////////////////////////////////////////////////////////////////
+			//cn				= (uint64_t)pBuffer->timestamp_ns;				// Camera now
+            cn              = (uint64_t)(arv_buffer_get_timestamp(pBuffer));
+            //////////////////////////////////////////////////////////////////////////////////
 			rn	 			= ros::Time::now().toNSec();					// ROS now
+
 			
 			if (iFrame < 10)
 			{
@@ -558,7 +579,11 @@ static void NewBuffer_callback (ArvStream *pStream, ApplicationData *pApplicatio
 			
 			// Construct the image message.
 			msg.header.stamp.fromNSec(tn);
-			msg.header.seq = pBuffer->frame_id;
+            // wbd
+            ////////////////////////////////////////////////////////////
+			//msg.header.seq = pBuffer->frame_id;
+            msg.header.seq = arv_buffer_get_frame_id(pBuffer);
+            ////////////////////////////////////////////////////////////
 			msg.header.frame_id = global.config.frame_id;
 			msg.width = global.widthRoi;
 			msg.height = global.heightRoi;
@@ -578,7 +603,13 @@ static void NewBuffer_callback (ArvStream *pStream, ApplicationData *pApplicatio
 				
         }
         else
-        	ROS_WARN ("Frame error: %s", szBufferStatusFromInt[pBuffer->status]);
+        {
+            // wbd
+            ////////////////////////////////////////////////////////////////////////////////////
+        	//ROS_WARN ("Frame error: %s", szBufferStatusFromInt[pBuffer->status]);
+        	ROS_WARN ("Frame error: %s", szBufferStatusFromInt[arv_buffer_get_status(pBuffer)]);
+            ////////////////////////////////////////////////////////////////////////////////////
+        }
         	
         arv_stream_push_buffer (pStream, pBuffer);
         iFrame++;
